@@ -1,3 +1,6 @@
+/*******************************************************************************
+ * Credit for these fireworks goes to: https://jsfiddle.net/dtrooper/AceJJ/
+ ******************************************************************************/
 var SCREEN_WIDTH = window.innerWidth,
     SCREEN_HEIGHT = window.innerHeight,
     mousePos = {
@@ -9,8 +12,8 @@ var SCREEN_WIDTH = window.innerWidth,
     canvas = document.createElement('canvas'),
     context = canvas.getContext('2d'),
     particles = [],
-    rockets = [],
-    MAX_PARTICLES = 400,
+    fireworks = [],
+    MAX_PARTICLES = 1000,
     colorCode = 0;
 
 // init
@@ -18,39 +21,13 @@ $(document).ready(function() {
     document.body.appendChild(canvas);
     canvas.width = SCREEN_WIDTH;
     canvas.height = SCREEN_HEIGHT;
-    //setInterval(launch, 800);
     setInterval(loop, 1000 / 50);
 });
 
-// update mouse position
-$(document).mousemove(function(e) {
-    e.preventDefault();
-    mousePos = {
-        x: e.clientX,
-        y: e.clientY
-    };
-});
-
-// launch more rockets!!!
 $(document).mousedown(function(e) {
-    launchFrom(e.clientX, e.clientY);
+    var rocket = new Firework(e.clientX, e.clientY, 120, (Math.random() * 60 + 120));
+    fireworks.push(rocket);
 });
-
-
-function launchFrom(x, y) {
-    if (rockets.length < 10) {
-        var rocket = new Rocket(x,y );
-        rocket.explosionColor = Math.floor(Math.random() * 360 / 10) * 10;
-        rocket.vel.y = Math.random() * -3 - 4;
-        rocket.vel.x = Math.random() * 6 - 3;
-        rocket.x = x;
-        rocket.y = y;
-        rocket.size = 8;
-        rocket.shrink = 0.999;
-        rocket.gravity = 0.01;
-        rockets.push(rocket);
-    }
-}
 
 function loop() {
     // update screen size
@@ -62,35 +39,16 @@ function loop() {
     }
 
     // clear canvas
-    context.fillStyle = "rgba(0, 0, 0, 0.05)";
+    context.fillStyle = "rgba(0, 0, 0, 0.15)";
     context.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
-    var existingRockets = [];
+    var existingFirework = [];
 
-    for (var i = 0; i < rockets.length; i++) {
-        // update and render
-        rockets[i].update();
-
-        // calculate distance with Pythagoras
-        var distance = Math.sqrt(Math.pow(mousePos.x - rockets[i].pos.x, 2) + Math.pow(mousePos.y - rockets[i].pos.y, 2));
-
-        // random chance of 1% if rockets is above the middle
-        var randomChance = rockets[i].pos.y < (SCREEN_HEIGHT * 2 / 3) ? (Math.random() * 100 <= 1) : false;
-
-/* Explosion rules
-             - 80% of screen
-            - going down
-            - close to the mouse
-            - 1% chance of random explosion
-        */
-        //if (rockets[i].pos.y < SCREEN_HEIGHT / 5 || rockets[i].vel.y >= 0 || distance < 50 || randomChance) {
-            rockets[i].explode();
-        //} else {
-            //existingRockets.push(rockets[i]);
-        //}
+    for (var i = 0; i < fireworks.length; i++) {
+        fireworks[i].explode();
     }
 
-    rockets = existingRockets;
+    fireworks = existingFirework;
 
     var existingParticles = [];
 
@@ -185,21 +143,19 @@ Particle.prototype.exists = function() {
     return this.alpha >= 0.1 && this.size >= 1;
 };
 
-function Rocket(x, y) {
-    Particle.apply(this, [{
-        x: x,
-        y: y}]);
+function Firework(x, y, color, numParticles) {
+    Particle.apply(this, [{ x: x, y: y}]);
 
-    this.explosionColor = 0;
+    this.explosionColor = color;
+    this.numParticles = numParticles;
 }
 
-Rocket.prototype = new Particle();
-Rocket.prototype.constructor = Rocket;
+Firework.prototype = new Particle();
+Firework.prototype.constructor = Firework;
 
-Rocket.prototype.explode = function() {
-    var count = Math.random() * 10 + 80;
+Firework.prototype.explode = function() {
 
-    for (var i = 0; i < count; i++) {
+    for (var i = 0; i < this.numParticles; i++) {
         var particle = new Particle(this.pos);
         var angle = Math.random() * Math.PI * 2;
 
