@@ -1,46 +1,91 @@
-/*******************************************************************************
- * Credit for these fireworks goes to: https://jsfiddle.net/dtrooper/AceJJ/
- ******************************************************************************/
-var SCREEN_WIDTH = window.innerWidth,
-    SCREEN_HEIGHT = window.innerHeight,
-    mousePos = {
-        x: 400,
-        y: 300
-    },
+let SCREEN_WIDTH = window.innerWidth;
+let SCREEN_HEIGHT = window.innerHeight;
+let FRAME_RATE = 60;
+let MAX_PARTICLES = 1000;
+let particles = [];
 
-    // create canvas
-    canvas = document.createElement('canvas'),
-    context = canvas.getContext('2d'),
-    particles = [],
-    MAX_PARTICLES = 1000,
-    colorCode = 0;
+let kinectronIpAddress = "10.0.75.1"; 
+let kinectron = null;
 
-// init
-$(document).ready(function() {
-    document.body.appendChild(canvas);
-    canvas.width = SCREEN_WIDTH;
-    canvas.height = SCREEN_HEIGHT;
-    setInterval(loop, 1000 / 50);
-});
+let DELAY = 30;
 
-$(document).mousedown(function(e) {
-    var firework = new Firework(e.clientX, e.clientY, 120, (Math.random() * 60 + 120));
-    firework.explode();
-    $('#timpani').clone()[0].play();
-});
+let song = null;
+let timpani = null;
+let hihat = null;
+let cymbal = null;
 
-function loop() {
-    // update screen size
+function HandStatus(currentHandState, lastUpdated) {
+    this.currentHandState = 0;
+    this.lastUpdated = 0;
+}
+
+function Player(playerNo, colorIndex, soundEffect) {
+    this.playerNo = playerNo;
+    this.colorIndex = colorIndex;
+    this.leftHand = new HandStatus(0,0);
+    this.rightHand = new HandStatus(0,0);
+    this.soundEffect = soundEffect;
+}
+
+let players = [];
+
+function preload() {
+    song = loadSound('source/overture.mp3');
+    timpani = loadSound('source/timpani.mp3');
+    hihat = loadSound('source/hihat.mp3');
+    cymbal = loadSound('source/cymbal.mp3');
+
+}
+
+function setup() {
+    context = createCanvas(SCREEN_WIDTH, SCREEN_HEIGHT);
+    frameRate(FRAME_RATE);
+    background(0);
+    noStroke();
+
+    players = [
+        new Player(1, 120, timpani),
+        new Player(2, 240, cymbal),
+        new Player(3, 360, hihat),
+        new Player(4, 60, timpani),
+        new Player(5, 180, cymbal),
+        new Player(6, 300, hihat)
+    ];
+  
+    initKinectron();
+    song.play();
+  }
+
+function draw() {
+
+}
+
+function windowResized() {
     if (SCREEN_WIDTH != window.innerWidth) {
-        canvas.width = SCREEN_WIDTH = window.innerWidth;
+        SCREEN_WIDTH = window.innerWidth;
     }
-    if (SCREEN_HEIGHT != window.innerHeight) {
-        canvas.height = SCREEN_HEIGHT = window.innerHeight;
+    if(SCREEN_HEIGHT != window.innerHeight) {
+        SCREEN_HEIGHT = window.innerHeight;
     }
+    resizeCanvas(SCREEN_WIDTH, SCREEN_HEIGHT);
+  }
 
-    // clear canvas
-    context.fillStyle = "rgba(0, 0, 0, 0.15)";
-    context.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+function initKinectron() {
+    // define and create an instance of kinectron
+    kinectron = new Kinectron(kinectronIpAddress);
+  
+    // connect with application over peer
+    kinectron.makeConnection();
+  
+    // request all tracked bodies and pass data to your callback
+    kinectron.startTrackedBodies(bodyTracked);
+}
+
+function bodyTracked(body) {
+    background(0,50);
+  
+    drawHand(body.bodyIndex, 'leftHand', body.joints[7], body.leftHandState); 
+    drawHand(body.bodyIndex, 'rightHand', body.joints[11], body.rightHandState);
 
     var existingParticles = [];
 
@@ -49,7 +94,7 @@ function loop() {
 
         // render and save particles that can be rendered
         if (particles[i].exists()) {
-            particles[i].render(context);
+            particles[i].render(drawingContext);
             existingParticles.push(particles[i]);
         }
     }
@@ -60,4 +105,20 @@ function loop() {
     while (particles.length > MAX_PARTICLES) {
         particles.shift();
     }
+    
+}
+
+function drawHand(playerNo, handKey, hand, handState) {
+    currentPlayer = players[playerNo];
+    if(handState != currentPlayer[handKey].currentHandState) {
+        if(handState == 2 && (frameCount - currentPlayer[handKey].lastUpdated) > DELAY) {
+            var firework = new Firework(hand.depthX * width, hand.depthY * height, currentPlayer.colorIndex, (Math.random() * 60 + 120));
+            firework.explode();
+            currentPlayer.soundEffect.play();
+            currentPlayer[handKey].lastUpdated = frameCount;
+        }
+        currentPlayer[handKey].currentHandState = handState;
+        
+    }
+
 }
